@@ -20,62 +20,69 @@ describe("multisig wallet", async() => {
         await multisig.deployed();
     })
 
-    it("an approver address should be able to create request withdraw", async() => {
+    it("an approver address should be able to create request Transaction", async() => {
         //try with account 5
         await expectRevert(
-            multisig.connect(account5).requestWithdraw(10, account5.address),
+            multisig.connect(account5).requestTransaction(10, account5.address, "test description"),
             "VM Exception while processing transaction"
         )
 
-        await multisig.connect(account1).requestWithdraw(10, account5.address);
-        let result = await multisig.getWithdrawRequest(0);
+        await multisig.connect(account1).requestTransaction(10, account5.address, "test description");
+        let result = await multisig.getTransactionRequest(0);
         
-        expect(result[0]).to.equal(10)
-        expect(result[1]).to.equal(account5.address)
-        expect(result[2]).to.equal(1)
-        expect(result[3]).to.equal(false)
+        expect(result[0]).to.equal("test description")
+        expect(result[1]).to.equal(10)
+        expect(result[2]).to.equal(account5.address)
+        expect(result[3]).to.equal(1)
         expect(result[4]).to.equal(false)
+        expect(result[5]).to.equal(false)
+
+        expect(multisig.getDescription(0) == "test description")
+        expect(multisig.getHasVoted(0, account1.address) == true);
+        expect(multisig.getCurrentVote(0, account1.address) == true)
+        expect(multisig.getApprovalPercentageToPass() == 50)
     })
 
-    it("an approver can vote on withdraw", async() => {
-        await multisig.connect(account1).requestWithdraw(10, account5.address);
+
+    it("an approver can vote on Transaction", async() => {
+        await multisig.connect(account1).requestTransaction(10, account5.address, "test description");
 
         let voteResult = await multisig.getCurrentVote(0, account1.address);
-        let withdrawResult = await multisig.getWithdrawRequest(0);
+        let transactionResult = await multisig.getTransactionRequest(0);
 
         expect(voteResult == true)
-        expect(withdrawResult[2] == 1)
-        expect(withdrawResult[3] == false)
-        expect(withdrawResult[4] == false)
+        expect(transactionResult[2] == 1)
+        expect(transactionResult[3] == false)
+        expect(transactionResult[4] == false)
     })
 
-    it("withdraw request should know to set withdraw bool to true when enough votes equal percentage needed", async ()=> {
-        await multisig.connect(account1).requestWithdraw(10, account5.address);
-        await multisig.connect(account2).voteOnWithdraw(0, true);
+    it("Transaction request should know to set transaction bool to true when enough votes equal percentage needed", async ()=> {
+        await multisig.connect(account1).requestTransaction(10, account5.address, "test description");
+        await multisig.connect(account2).voteOnTransaction(0, true);
 
-        let withdrawResult = await multisig.getWithdrawRequest(0);
+        let transactionResult = await multisig.getTransactionRequest(0);
 
-        expect(withdrawResult[4] == true)
+        expect(transactionResult[4] == true)
     })
 
     it("SHOULDNT allow an address to vote more than once", async() => {
-        await multisig.connect(account1).requestWithdraw(10, account5.address);
+        await multisig.connect(account1).requestTransaction(10, account5.address, "test description");
         await expectRevert(
-            multisig.connect(account1).voteOnWithdraw(0, true),
+            multisig.connect(account1).voteOnTransaction(0, true),
             "this address has already voted"
         )
 
-        let withdrawResult = await multisig.getWithdrawRequest(0);
+        let transactionResult = await multisig.getTransactionRequest(0);
 
-        expect(withdrawResult[4] == false)
+        expect(transactionResult[4] == false)
     })
 
-    it("should be able to withdraw funds when enough approvers approve by approver", async () => {
+    it("should be able to transaction funds when enough approvers approve by approver", async () => {
         const provider = waffle.provider;
 
         await multisig.connect(account1).deposit({value: 100})
-        await multisig.connect(account1).requestWithdraw(10, account5.address);
-        await multisig.connect(account2).voteOnWithdraw(0, true);
+        await multisig.connect(account1).requestTransaction(10, account5.address, "test description");
+        await multisig.connect(account2).voteOnTransaction(0, true);
 
         let balanceBefore = await provider.getBalance(account5.address);
 
@@ -89,12 +96,12 @@ describe("multisig wallet", async() => {
 
     })
 
-    it("should be able to withdraw funds when enough approvers approve by receiver", async () => {
+    it("should be able to transaction funds when enough approvers approve by receiver", async () => {
         const provider = waffle.provider;
 
         await multisig.connect(account1).deposit({value: 10})
-        await multisig.connect(account1).requestWithdraw(10, account5.address);
-        await multisig.connect(account2).voteOnWithdraw(0, true);
+        await multisig.connect(account1).requestTransaction(10, account5.address, "test description");
+        await multisig.connect(account2).voteOnTransaction(0, true);
 
         let balanceBefore = await provider.getBalance(multisig.address);
         expect(balanceBefore).to.equal(10);

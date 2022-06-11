@@ -5,6 +5,7 @@ contract MultisigWallet {
 
     address[] approvers;
 
+    mapping(uint => string) description;
     mapping(uint => uint) amount;
     mapping(uint => address payable) receiver;
     mapping(uint => uint) approvals;
@@ -34,7 +35,8 @@ contract MultisigWallet {
         _;
     }
 
-    function requestWithdraw(uint _amount, address payable _receiver) public onlyApprover {
+    function requestTransaction(uint _amount, address payable _receiver, string memory _description) public onlyApprover {
+        description[iterator] = _description;
         amount[iterator] = _amount;
         receiver[iterator] = _receiver;
         approvals[iterator] = 1;
@@ -46,7 +48,7 @@ contract MultisigWallet {
         iterator++;
     }
 
-    function voteOnWithdraw(uint _id, bool _voteValue) public onlyApprover {
+    function voteOnTransaction(uint _id, bool _voteValue) public onlyApprover {
         require(withdrawRequestFinished[_id] == false, "withdraw must be still active");
         require(hasVoted[_id][msg.sender] == false, "this address has already voted");
         hasVoted[_id][msg.sender] = true;
@@ -93,8 +95,12 @@ contract MultisigWallet {
 
     function deposit() public payable {}
 
-    function getWithdrawRequest(uint _id) public view returns(uint, address payable, uint, bool, bool) {
-        return (amount[_id], receiver[_id], approvals[_id], withdrawRequestFinished[_id], needsToWithdraw[_id]);
+    function getDescription(uint _id) public view returns(string memory) {
+        return description[_id];
+    }
+
+    function getTransactionRequest(uint _id) public view returns(string memory, uint, address payable, uint, bool, bool) {
+        return (description[_id], amount[_id], receiver[_id], approvals[_id], withdrawRequestFinished[_id], needsToWithdraw[_id]);
     }
 
     function getHasVoted(uint _id, address _address) public view returns(bool) {
